@@ -18,7 +18,7 @@ import re
 # Output CSV header:
 # Date,Payee,Category,Memo,Outflow,Inflow
 # Input CSV header:
-# "Dato";"Tekst";"Beløb";"Saldo";"Status";"Afstemt"
+# "Dato";"Tekst";"Beløp";"Saldo";"Status";"Avstemt"
 
 class Transaction_DK(object):
     def __init__(self, Date, Payee, Category='', Memo='', amount_str=0.0, Cleared=True):
@@ -48,15 +48,16 @@ class Transaction_DK(object):
         return s
     
 
-def reader(line, filter=True, stats=('Udført',), cleared=('Udført',), notcleared=('Venter',), verbose=0, lineno=0):
+
+def reader(line, filter=True, stats=('Utført',), cleared=('Utført',), notcleared=('Venter',), verbose=0, lineno=0):
     line = [s.strip('"') for s in line.rstrip().split(';')]
     if filter and not line[4] in stats:
         return None
-    if not filter:
-        is_cleared = line[4] in cleared
-        if verbose > 0 and not is_cleared and line[4] not in notcleared:
-            print('Did not recognize cleared state ("{}") on line {}.'.format(line[4], lineno))
-        
+
+    is_cleared = line[4] in cleared
+    if verbose > 0 and not is_cleared and line[4] not in notcleared:
+        print('Did not recognize cleared state ("{}") on line {}.'.format(line[4], lineno))
+    
     t = Transaction_DK(line[0], line[1], amount_str=line[2], Cleared=is_cleared)
     return t
 
@@ -68,9 +69,11 @@ def main(inp, outp, as_qif=False, verbose=0, qifopt=None):
     with codecs.open(inp,  encoding='latin1') as fin:
         l1 = fin.readline().rstrip()
         fields = [s.strip('"') for s in l1.split(';')]
-        if fields != ['Dato', 'Tekst', 'Bel\xf8b', 'Saldo', 'Status', 'Afstemt']:
+        wantedFields = ['Dato', 'Tekst', 'Bel\xf8p', 'Saldo', 'Status', 'Avstemt']
+        if fields != wantedFields:
             print(fields)
-            raise ValueError('Downloadet CSV fil har ikke den rigtige første linje')   
+            print(wantedFields)
+            raise ValueError('Den nedlastede CSV filen mangler rigtig fï¿½rste linje')   
         with codecs.open(outp, 'w', encoding='latin1') as fout:
             i = 0
             j = 0
@@ -105,15 +108,16 @@ def make_output_name(input, qif=False, suffix='_ynab'):
     return output + ext
                 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Converts Danske Bank CSV files to YNAB formats.')
-    parser.add_argument('input', help='Input filename, the CSV file from Danske Bank.')
+    parser = argparse.ArgumentParser(description='Converts Danske Bank Norge CSV files to YNAB formats.')
+    parser.add_argument('input', help='Input filename, the CSV file from Danske Bank Norge.')
     parser.add_argument('output', nargs='?', help='Output filename')
     parser.add_argument('-q','--qif', help='Output in QUICKEN format. Changes filtering', action='store_true')
     parser.add_argument('-qt', help='Modify "!Type" header in output file (Default: "Bank").', default="Bank", metavar='header type')
     parser.add_argument('--verbose', '-v', default=1, help='Verbose, adds logging output for your convenience.', action='count')
     parser.add_argument('--suffix', default='_ynab', help='Suffix to filename when input and output files are both CSV.')
     args = parser.parse_args()
-    
+
+    qifopt = {}
     if args.output is None:
         args.output = make_output_name(args.input, qif=args.qif, suffix=args.suffix)
     
